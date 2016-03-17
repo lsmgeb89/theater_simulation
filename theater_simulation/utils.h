@@ -1,9 +1,10 @@
 #ifndef THEATER_SIMULATION_UTILS_H_
 #define THEATER_SIMULATION_UTILS_H_
 
-#include <pthread.h>
 #include <iostream>
 #include <stdexcept>
+#include <pthread.h>
+#include <semaphore.h>
 
 namespace utils {
 
@@ -44,10 +45,35 @@ class ThreadUtil {
         delete status;
         throw std::runtime_error("thread terminated abnormally!\n");
       } else {
+        std::cout << "Joined customer " << *status << std::endl;
         delete status;
       }
     }
-  };
+  }
+};
+
+class SemUtil {
+ public:
+  static void Init(sem_t* sem, const uint32_t& value) {
+    int ret = sem_init(sem, 0, value);
+    if (ret) {
+      throw std::runtime_error("Init semaphore failed!\n");
+    }
+  }
+
+  static void Wait(sem_t* sem) {
+    int ret = sem_wait(sem);
+    if (ret) {
+      throw std::runtime_error("Wait semaphore failed!\n");
+    }
+  }
+
+  static void Post(sem_t* sem) {
+    int ret = sem_post(sem);
+    if (ret) {
+      throw std::runtime_error("Post semaphore failed!\n");
+    }
+  }
 };
 
 } // namespace utils
