@@ -4,6 +4,7 @@
 #include <map>
 #include <queue>
 #include <vector>
+#include <random>
 
 #include "utils.h"
 
@@ -89,6 +90,9 @@ class Theater {
   static std::vector<sem_t> concession_stand_woker_available_;
   static std::vector<sem_t> food_request_available_;
   static std::vector<sem_t> buy_food_finished_;
+
+  static std::mt19937 random_engine_;
+  static std::uniform_int_distribution<std::mt19937::result_type> dist_;
 };
 
 } // namespace theater

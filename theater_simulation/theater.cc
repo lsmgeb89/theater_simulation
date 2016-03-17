@@ -34,6 +34,9 @@ std::vector<sem_t> Theater::concession_stand_woker_available_;
 std::vector<sem_t> Theater::food_request_available_;
 std::vector<sem_t> Theater::buy_food_finished_;
 
+std::uniform_int_distribution<std::mt19937::result_type> Theater::dist_(1, 100);
+std::mt19937 Theater::random_engine_;
+
 void Theater::Open(const std::string file_path) {
   std::ifstream moive_list_file;
   moive_list_file.open(file_path);
@@ -64,6 +67,8 @@ void Theater::Open(const std::string file_path) {
 void Theater::Init(void) {
   sem_t tmp;
   thread_info_ = {{BoxOfficeAgent, 2, }, {TicketTaker, 1, }, {ConcessionStandWorker, 1, }, {Customer, 50, }};
+
+  random_engine_.seed(std::random_device()());
 
   utils::SemUtil::Init(&mutex_output_, 1);
 
@@ -107,7 +112,7 @@ void Theater::Simulate(void) {
 
 void* Theater::Customer(void* argv) {
   uint32_t* customer_id = static_cast<uint32_t*>(argv);
-  bool to_buy_concession = static_cast<bool>(*customer_id % 2);
+  bool to_buy_concession;
 
   utils::SemUtil::Wait(&mutex_output_);
   std::cout << "Customer " << *customer_id << " created" << std::endl;
@@ -128,7 +133,7 @@ void* Theater::Customer(void* argv) {
   // Wait the agent to call me
   utils::SemUtil::Wait(&agent_available_[*customer_id]);
 
-  message_[*customer_id].movie_index = (*customer_id % movie_list_.size());
+  message_[*customer_id].movie_index = (dist_(random_engine_) % movie_list_.size());
 
   utils::SemUtil::Wait(&mutex_output_);
   std::cout << "Customer " << *customer_id << " buying ticket to " << movie_list_[message_[*customer_id].movie_index] << std::endl;
@@ -162,6 +167,8 @@ void* Theater::Customer(void* argv) {
 
   utils::SemUtil::Wait(&ticket_taken_[*customer_id]);
 
+  to_buy_concession = static_cast<bool>(dist_(random_engine_) % 2);
+
   if (!to_buy_concession) {
     utils::SemUtil::Wait(&mutex_output_);
     std::cout << "Customer " << *customer_id << " enters theater to see " << movie_list_[message_[*customer_id].movie_index] << std::endl;
@@ -185,7 +192,7 @@ void* Theater::Customer(void* argv) {
   // Wait the concession stand worker to call me
   utils::SemUtil::Wait(&concession_stand_woker_available_[*customer_id]);
 
-  food_message_[*customer_id] = static_cast<Food>(*customer_id % 3);
+  food_message_[*customer_id] = static_cast<Food>(dist_(random_engine_) % 3);
 
   utils::SemUtil::Wait(&mutex_output_);
   std::cout << "Customer " << *customer_id << " in line to buy " << FoodToString(food_message_[*customer_id]) << std::endl;
