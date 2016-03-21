@@ -7,9 +7,9 @@ int main(int argc, char* argv[]) {
   }
 
   try {
-    theater::Theater::Init();
-    theater::Theater::Open(argv[1]);
-    theater::Theater::Simulate();
+    theater::Theater t;
+    t.Open(argv[1]);
+    t.Simulate();
   } catch (const std::runtime_error& err) {
     std::cerr << err.what();
   }

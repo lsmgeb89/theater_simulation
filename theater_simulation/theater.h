@@ -1,18 +1,24 @@
 #ifndef THEATER_SIMULATION_THEATER_H_
 #define THEATER_SIMULATION_THEATER_H_
 
-#include <map>
+#include <atomic>
+#include <functional>
+#include <iostream>
 #include <queue>
-#include <vector>
 #include <random>
+#include <string>
+#include <thread>
 
 #include "utils.h"
 
 namespace theater {
+
+class Theater;
+typedef void (Theater::*ThreadFunc) (const uint32_t&);
+
 struct ThreadInfo {
-  utils::ThreadFunc start_routine;
+  ThreadFunc start_routine;
   uint32_t thread_num;
-  std::vector<pthread_t> threads;
 };
 
 enum TicketResult {
@@ -33,66 +39,75 @@ struct TicketMessage {
 
 class Theater {
  public:
-  static void Open(const std::string file_path);
-  static void Init(void);
-  static void Simulate(void);
-  static void* Customer(void* argv);
-  static void* BoxOfficeAgent(void* argv);
-  static void* TicketTaker(void* argv);
-  static void* ConcessionStandWorker(void* argv);
-  static std::string FoodToString(const Food& food) {
-    if (Popcorn == food) {
-      return "Popcorn";
-    } else if (Soda == food) {
-      return "Soda";
-    } else if (Both == food) {
-      return "Popcorn and Soda";
-    } else {
-      return "";
-    }
-  }
+  Theater(const uint32_t agent_num = 2,
+          const uint32_t taker_num = 1,
+          const uint32_t worker_num = 1,
+          const uint32_t customer_num = 50);
+
+  void Open(const std::string file_path);
+  void Simulate(void);
+
  private:
-  static sem_t mutex_output_;
+  // customer subroutine
+  bool BuyTicket(const uint32_t& id);
+  void TakeTicket(const uint32_t& id);
+  void BuyFood(const uint32_t& id);
 
-  static std::vector<std::string> movie_list_;
-  static std::vector<ThreadInfo> thread_info_;
+  // thread function
+  void Customer(const uint32_t& id);
+  void BoxOfficeAgent(const uint32_t& id);
+  void TicketTaker(const uint32_t& id);
+  void ConcessionStandWorker(const uint32_t& id);
+
+  // internal helper
+  void CreateThread(const ThreadInfo& thread_info,
+                    std::vector<std::thread>& threads);
+  void JoinThread(std::vector<std::thread>& threads);
+  static std::string FoodToString(const Food& food);
 
   //
-  static std::vector<uint64_t> movie_seat_;
-  static sem_t mutex_movie_seat_;
+  std::atomic_bool done_;
+  utils::Semaphore mutex_output_;
+  std::array<ThreadInfo, 4> pools_info_;
+  std::array<std::vector<std::thread>, 4> threads_;
 
   //
-  static std::queue<uint32_t> customer_queue_;
-  static sem_t mutex_customer_line_;
-  static sem_t customer_in_line_;
+  std::vector<uint64_t> movie_seat_;
+  std::vector<std::string> movie_list_;
+  utils::Semaphore mutex_movie_seat_;
+
+  //
+  std::queue<uint32_t> customer_queue_;
+  utils::Semaphore mutex_customer_line_;
+  utils::Semaphore customer_in_line_;
 
   // event for buying ticket
-  static std::vector<TicketMessage> message_;
-  static std::vector<sem_t> agent_available_;
-  static std::vector<sem_t> request_available_;
-  static std::vector<sem_t> buy_finished_;
+  std::vector<TicketMessage> message_;
+  std::vector<utils::Semaphore> agent_available_;
+  std::vector<utils::Semaphore> request_available_;
+  std::vector<utils::Semaphore> buy_finished_;
 
   //
-  static std::queue<uint32_t> ticket_taker_queue_;
-  static sem_t mutex_ticket_taker_queue_;
-  static sem_t customer_in_ticket_taker_queue_;
+  std::queue<uint32_t> ticket_taker_queue_;
+  utils::Semaphore mutex_ticket_taker_queue_;
+  utils::Semaphore customer_in_ticket_taker_queue_;
 
   // event for taking ticket
-  static std::vector<sem_t> ticket_taken_;
+  std::vector<utils::Semaphore> ticket_taken_;
 
   //
-  static std::queue<uint32_t> concession_stand_queue_;
-  static sem_t mutex_concession_stand_queue_;
-  static sem_t customer_in_concession_stand_queue_;
+  std::queue<uint32_t> concession_stand_queue_;
+  utils::Semaphore mutex_concession_stand_queue_;
+  utils::Semaphore customer_in_concession_stand_queue_;
 
   // event for buying ticket
-  static std::vector<Food> food_message_;
-  static std::vector<sem_t> concession_stand_woker_available_;
-  static std::vector<sem_t> food_request_available_;
-  static std::vector<sem_t> buy_food_finished_;
+  std::vector<Food> food_message_;
+  std::vector<utils::Semaphore> concession_stand_worker_available_;
+  std::vector<utils::Semaphore> food_request_available_;
+  std::vector<utils::Semaphore> buy_food_finished_;
 
-  static std::mt19937 random_engine_;
-  static std::uniform_int_distribution<std::mt19937::result_type> dist_;
+  std::mt19937 random_engine_;
+  std::uniform_int_distribution<std::mt19937::result_type> dist_;
 };
 
 } // namespace theater
