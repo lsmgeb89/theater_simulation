@@ -2,6 +2,7 @@
 #define THEATER_SIMULATION_UTILS_H_
 
 #include <condition_variable>
+#include <iostream>
 #include <mutex>
 #include <vector>
 
@@ -42,12 +43,18 @@ class Semaphore {
   std::condition_variable cv_;
 };
 
+struct adopt_lock_t { };
+constexpr adopt_lock_t adopt_lock { };
+
 class SemaphoreGuard {
  public:
   explicit SemaphoreGuard(Semaphore& semaphore)
     : semaphore_(semaphore) {
       semaphore_.Wait();
   }
+
+  SemaphoreGuard(Semaphore& semaphore, adopt_lock_t)
+      : semaphore_(semaphore) { }
 
   ~SemaphoreGuard() {
     semaphore_.Post();
@@ -62,6 +69,17 @@ class SemaphoreGuard {
  private:
   Semaphore& semaphore_;
 };
+
+inline std::ostream& operator<<(std::ostream& out, const SemaphoreGuard&) {
+  return out;
+}
+
+inline SemaphoreGuard Lock(Semaphore& mutex) {
+  mutex.Wait();
+  return { mutex, adopt_lock };
+}
+
+#define MUTEX_COUT std::cout << Lock(mutex_output_)
 
 } // namespace utils
 

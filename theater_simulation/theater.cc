@@ -66,10 +66,7 @@ bool Theater::BuyTicket(const uint32_t &id) {
     utils::SemaphoreGuard lock(mutex_customer_line_);
     customer_queue_.push(id);
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Customer " << id << " in line" << std::endl;
-    }
+    MUTEX_COUT << "Customer " << id << " in line" << std::endl;
 
     // Notify an agent someone has in line
     customer_in_line_.Post();
@@ -80,11 +77,8 @@ bool Theater::BuyTicket(const uint32_t &id) {
 
   message_[id].movie_index = (dist_(random_engine_) % movie_list_.size());
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Customer " << id << " buying ticket to " << movie_list_[message_[id].movie_index]
+  MUTEX_COUT << "Customer " << id << " buying ticket to " << movie_list_[message_[id].movie_index]
         << std::endl;
-  }
 
   // Notify the movie I want to see
   request_available_[id].Post();
@@ -93,10 +87,7 @@ bool Theater::BuyTicket(const uint32_t &id) {
   buy_finished_[id].Wait();
 
   if (TicketSold == message_[id].result) {
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Customer " << id << " return because ticket has sold " << std::endl;
-    }
+    MUTEX_COUT << "Customer " << id << " return because ticket has sold " << std::endl;
     result = false;
   }
   return result;
@@ -107,10 +98,7 @@ void Theater::TakeTicket(const uint32_t &id) {
     utils::SemaphoreGuard lock(mutex_ticket_taker_queue_);
     ticket_taker_queue_.push(id);
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Customer " << id << " in line to see ticket taker" << std::endl;
-    }
+    MUTEX_COUT << "Customer " << id << " in line to see ticket taker" << std::endl;
 
     // Notify the ticket taker someone has in line
     customer_in_ticket_taker_queue_.Post();
@@ -124,10 +112,7 @@ void Theater::BuyFood(const uint32_t& id) {
     utils::SemaphoreGuard lock(mutex_concession_stand_queue_);
     concession_stand_queue_.push(id);
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Customer " << id << " in line to see concession stand" << std::endl;
-    }
+    MUTEX_COUT << "Customer " << id << " in line to see concession stand" << std::endl;
   }
 
   customer_in_concession_stand_queue_.Post();
@@ -137,11 +122,8 @@ void Theater::BuyFood(const uint32_t& id) {
 
   food_message_[id] = static_cast<Food>(dist_(random_engine_) % 3);
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Customer " << id << " in line to buy " << FoodToString(food_message_[id])
+  MUTEX_COUT << "Customer " << id << " in line to buy " << FoodToString(food_message_[id])
         << std::endl;
-  }
 
   // Notify the food I want to eat
   food_request_available_[id].Post();
@@ -149,19 +131,13 @@ void Theater::BuyFood(const uint32_t& id) {
   // Wait the concession stand worker to give me the food
   buy_food_finished_[id].Wait();
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Customer " << id << " receives " << FoodToString(food_message_[id]) << std::endl;
-    std::cout << "Customer " << id << " enters theater to see "
+  MUTEX_COUT << "Customer " << id << " receives " << FoodToString(food_message_[id]) << std::endl;
+  MUTEX_COUT << "Customer " << id << " enters theater to see "
         << movie_list_[message_[id].movie_index] << std::endl;
-  }
 }
 
 void Theater::Customer(const uint32_t& id) {
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Customer " << id << " created" << std::endl;
-  }
+  MUTEX_COUT << "Customer " << id << " created" << std::endl;
 
   if (!BuyTicket(id)) { return; }
 
@@ -170,11 +146,8 @@ void Theater::Customer(const uint32_t& id) {
   bool to_buy_concession = static_cast<bool>(dist_(random_engine_) % 2);
 
   if (!to_buy_concession) {
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Customer " << id << " enters theater to see "
+    MUTEX_COUT << "Customer " << id << " enters theater to see "
           << movie_list_[message_[id].movie_index] << std::endl;
-    }
     return;
   }
 
@@ -184,11 +157,7 @@ void Theater::Customer(const uint32_t& id) {
 void Theater::BoxOfficeAgent(const uint32_t& id) {
   uint32_t customer_id;
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Box office agent " << id << " created" << std::endl;
-  }
-
+  MUTEX_COUT << "Box office agent " << id << " created" << std::endl;
 
   while(!done_) {
     // Wait customers going to line
@@ -196,10 +165,7 @@ void Theater::BoxOfficeAgent(const uint32_t& id) {
 
     if (done_) { return; }
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Box office agent " << id << " sees customers in line" << std::endl;
-    }
+    MUTEX_COUT << "Box office agent " << id << " sees customers in line" << std::endl;
 
     {
       utils::SemaphoreGuard lock(mutex_customer_line_);
@@ -210,10 +176,7 @@ void Theater::BoxOfficeAgent(const uint32_t& id) {
     // Notify the front customer that I am ready to serve
     agent_available_[customer_id].Post();
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Box office agent " << id << " serving customer " << customer_id << std::endl;
-    }
+    MUTEX_COUT << "Box office agent " << id << " serving customer " << customer_id << std::endl;
 
     // Wait the movie the customer want to see
     request_available_[customer_id].Wait();
@@ -225,12 +188,9 @@ void Theater::BoxOfficeAgent(const uint32_t& id) {
         movie_seat_[message_[customer_id].movie_index]--;
         message_[customer_id].result = TicketAvailable;
 
-        {
-          utils::SemaphoreGuard lock(mutex_output_);
-          std::cout << "Box office agent " << id << " sold ticket for "
+        MUTEX_COUT << "Box office agent " << id << " sold ticket for "
               << movie_list_[message_[customer_id].movie_index];
-          std::cout << " to customer " << customer_id << std::endl;
-        }
+        MUTEX_COUT << " to customer " << customer_id << std::endl;
 
         usleep(1500);
       }
@@ -244,10 +204,7 @@ void Theater::BoxOfficeAgent(const uint32_t& id) {
 void Theater::TicketTaker(const uint32_t& id) {
   uint32_t customer_id;
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Ticket taker " << id << " created" << std::endl;
-  }
+  MUTEX_COUT << "Ticket taker " << id << " created" << std::endl;
 
   while(!done_) {
     // Wait customers going to line
@@ -255,10 +212,7 @@ void Theater::TicketTaker(const uint32_t& id) {
 
     if (done_) { return; }
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Ticket taker " << id << " sees customers in line" << std::endl;
-    }
+    MUTEX_COUT << "Ticket taker " << id << " sees customers in line" << std::endl;
 
     {
       utils::SemaphoreGuard lock(mutex_ticket_taker_queue_);
@@ -268,10 +222,7 @@ void Theater::TicketTaker(const uint32_t& id) {
 
     usleep(250);
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Ticket taken from customer " << customer_id << std::endl;
-    }
+    MUTEX_COUT << "Ticket taken from customer " << customer_id << std::endl;
 
     ticket_taken_[customer_id].Post();
   }
@@ -280,10 +231,7 @@ void Theater::TicketTaker(const uint32_t& id) {
 void Theater::ConcessionStandWorker(const uint32_t& id) {
   uint32_t customer_id;
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Concession stand worker " << id << " created" << std::endl;
-  }
+  MUTEX_COUT << "Concession stand worker " << id << " created" << std::endl;
 
   while(!done_) {
     // Wait customers going to line
@@ -291,10 +239,7 @@ void Theater::ConcessionStandWorker(const uint32_t& id) {
 
     if (done_) { return; }
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Concession stand worker " << id << " sees customers in line" << std::endl;
-    }
+    MUTEX_COUT << "Concession stand worker " << id << " sees customers in line" << std::endl;
 
     {
       utils::SemaphoreGuard lock(mutex_concession_stand_queue_);
@@ -305,29 +250,20 @@ void Theater::ConcessionStandWorker(const uint32_t& id) {
     // Notify the front customer that I am ready to serve
     concession_stand_worker_available_[customer_id].Post();
 
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Concession stand worker " << id << " serving customer " << customer_id << std::endl;
-    }
+    MUTEX_COUT << "Concession stand worker " << id << " serving customer " << customer_id << std::endl;
 
     // Wait the food the customer want to eat
     food_request_available_[customer_id].Wait();
 
     // Check whether seat is available
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << "Order for " << FoodToString(food_message_[customer_id]) << " taken from customer " << customer_id
+    MUTEX_COUT << "Order for " << FoodToString(food_message_[customer_id]) << " taken from customer " << customer_id
           << std::endl;
-    }
 
     // Fill Order
     usleep(3000);
 
     // Notify the customer to take the food
-    {
-      utils::SemaphoreGuard lock(mutex_output_);
-      std::cout << FoodToString(food_message_[customer_id]) << " given to customer " << customer_id << std::endl;
-    }
+    MUTEX_COUT << FoodToString(food_message_[customer_id]) << " given to customer " << customer_id << std::endl;
 
     buy_food_finished_[customer_id].Post();
   }
@@ -340,10 +276,7 @@ void Theater::Simulate(void) {
 
   CreateThread(pools_info_[3], threads_[3]);
 
-  {
-    utils::SemaphoreGuard lock(mutex_output_);
-    std::cout << "Theater is open" << std::endl;
-  }
+  MUTEX_COUT << "Theater is open" << std::endl;
 
   JoinThread(threads_[3]);
 
@@ -382,10 +315,7 @@ void Theater::JoinThread(std::vector<std::thread>& threads) {
     if (thread.joinable()) {
       std::thread::id thread_id = thread.get_id();
       thread.join();
-      {
-        utils::SemaphoreGuard lock(mutex_output_);
-        std::cout << "Join thread " << thread_id << std::endl;
-      }
+      MUTEX_COUT << "Join thread " << thread_id << std::endl;
     }
   }
 }
