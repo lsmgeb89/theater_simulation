@@ -51,10 +51,10 @@ Theater::Theater(const uint32_t agent_num,
     concession_stand_worker_available_(customer_num),
     food_request_available_(customer_num),
     buy_food_finished_(customer_num) {
-  pools_info_[0] = {&Theater::BoxOfficeAgent, agent_num};
-  pools_info_[1] = {&Theater::TicketTaker, taker_num};
-  pools_info_[2] = {&Theater::ConcessionStandWorker, worker_num};
-  pools_info_[3] = {&Theater::Customer, customer_num};
+  thread_pool_.push_back({&Theater::BoxOfficeAgent, agent_num, "Box Office Agent"});
+  thread_pool_.push_back({&Theater::TicketTaker, taker_num, "Ticket Taker"});
+  thread_pool_.push_back({&Theater::ConcessionStandWorker, worker_num, "Concession Stand Worker"});
+  thread_pool_.push_back({&Theater::Customer, customer_num, "Customer"});
 
   random_engine_.seed(std::random_device()());
 }
@@ -136,25 +136,30 @@ void Theater::BuyFood(const uint32_t& id) {
         << movie_list_[message_[id].movie_index] << std::endl;
 }
 
-void Theater::Customer(const uint32_t& id) {
+void Theater::Customer(const uint32_t& id, std::promise<uint32_t> id_promise) {
+  bool to_buy_concession(false);
+
   MUTEX_COUT << "Customer " << id << " created" << std::endl;
 
-  if (!BuyTicket(id)) { return; }
+  if (!BuyTicket(id)) { goto done; }
 
   TakeTicket(id);
 
-  bool to_buy_concession = static_cast<bool>(dist_(random_engine_) % 2);
+  to_buy_concession = static_cast<bool>(dist_(random_engine_) % 2);
 
   if (!to_buy_concession) {
     MUTEX_COUT << "Customer " << id << " enters theater to see "
           << movie_list_[message_[id].movie_index] << std::endl;
-    return;
+    goto done;
   }
 
   BuyFood(id);
+
+done:
+  id_promise.set_value(id);
 }
 
-void Theater::BoxOfficeAgent(const uint32_t& id) {
+void Theater::BoxOfficeAgent(const uint32_t& id, std::promise<uint32_t> id_promise) {
   uint32_t customer_id;
 
   MUTEX_COUT << "Box office agent " << id << " created" << std::endl;
@@ -163,7 +168,7 @@ void Theater::BoxOfficeAgent(const uint32_t& id) {
     // Wait customers going to line
     customer_in_line_.Wait();
 
-    if (done_) { return; }
+    if (done_) { goto done; }
 
     MUTEX_COUT << "Box office agent " << id << " sees customers in line" << std::endl;
 
@@ -199,9 +204,12 @@ void Theater::BoxOfficeAgent(const uint32_t& id) {
     // Notify the customer to check the response
     buy_finished_[customer_id].Post();
   }
+
+done:
+  id_promise.set_value(id);
 }
 
-void Theater::TicketTaker(const uint32_t& id) {
+void Theater::TicketTaker(const uint32_t& id, std::promise<uint32_t> id_promise) {
   uint32_t customer_id;
 
   MUTEX_COUT << "Ticket taker " << id << " created" << std::endl;
@@ -210,7 +218,7 @@ void Theater::TicketTaker(const uint32_t& id) {
     // Wait customers going to line
     customer_in_ticket_taker_queue_.Wait();
 
-    if (done_) { return; }
+    if (done_) { goto done; }
 
     MUTEX_COUT << "Ticket taker " << id << " sees customers in line" << std::endl;
 
@@ -226,9 +234,12 @@ void Theater::TicketTaker(const uint32_t& id) {
 
     ticket_taken_[customer_id].Post();
   }
+
+done:
+  id_promise.set_value(id);
 }
 
-void Theater::ConcessionStandWorker(const uint32_t& id) {
+void Theater::ConcessionStandWorker(const uint32_t& id, std::promise<uint32_t> id_promise) {
   uint32_t customer_id;
 
   MUTEX_COUT << "Concession stand worker " << id << " created" << std::endl;
@@ -237,7 +248,7 @@ void Theater::ConcessionStandWorker(const uint32_t& id) {
     // Wait customers going to line
     customer_in_concession_stand_queue_.Wait();
 
-    if (done_) { return; }
+    if (done_) { goto done; }
 
     MUTEX_COUT << "Concession stand worker " << id << " sees customers in line" << std::endl;
 
@@ -267,55 +278,61 @@ void Theater::ConcessionStandWorker(const uint32_t& id) {
 
     buy_food_finished_[customer_id].Post();
   }
+
+done:
+  id_promise.set_value(id);
 }
 
 void Theater::Simulate(void) {
   for (uint32_t i = 0; i < 3; ++i) {
-    CreateThread(pools_info_[i], threads_[i]);
+    CreateThread(thread_pool_[i]);
   }
-
-  CreateThread(pools_info_[3], threads_[3]);
 
   MUTEX_COUT << "Theater is open" << std::endl;
 
-  JoinThread(threads_[3]);
+  CreateThread(thread_pool_[3]);
+
+  JoinThread(thread_pool_[3]);
 
   done_ = true;
 
-  for (uint32_t i = 0; i < pools_info_[0].thread_num; ++i) {
+  for (uint32_t i = 0; i < thread_pool_[0].thread_num; ++i) {
     customer_in_line_.Post();
   }
 
-  for (uint32_t i = 0; i < pools_info_[1].thread_num; ++i) {
+  for (uint32_t i = 0; i < thread_pool_[1].thread_num; ++i) {
     customer_in_ticket_taker_queue_.Post();
   }
 
-  for (uint32_t i = 0; i < pools_info_[2].thread_num; ++i) {
+  for (uint32_t i = 0; i < thread_pool_[2].thread_num; ++i) {
     customer_in_concession_stand_queue_.Post();
   }
 
   for (uint32_t i = 0; i < 3; ++i) {
-    JoinThread(threads_[i]);
+    JoinThread(thread_pool_[i]);
   }
 }
 
-void Theater::CreateThread(const ThreadInfo& thread_info,
-                           std::vector<std::thread>& threads) {
+void Theater::CreateThread(ThreadInfo& thread_info) {
   try {
     for (uint32_t i = 0; i < thread_info.thread_num; ++i) {
-      threads.push_back(std::thread(thread_info.start_routine, this, i));
+      thread_info.promises.emplace_back();
+      thread_info.futures.push_back(thread_info.promises[i].get_future());
+      thread_info.threads.push_back(std::thread(thread_info.start_routine,
+                                                this,
+                                                i,
+                                                std::move(thread_info.promises[i])));
     }
   } catch(...) {
     throw;
   }
 }
 
-void Theater::JoinThread(std::vector<std::thread>& threads) {
-  for (auto& thread : threads) {
-    if (thread.joinable()) {
-      std::thread::id thread_id = thread.get_id();
-      thread.join();
-      MUTEX_COUT << "Join thread " << thread_id << std::endl;
+void Theater::JoinThread(ThreadInfo& thread_info) {
+  for (uint32_t i = 0; i < thread_info.thread_num; ++i) {
+    if (thread_info.threads[i].joinable()) {
+      thread_info.threads[i].join();
+      MUTEX_COUT << "Joined " << thread_info.name << " " << thread_info.futures[i].get() << std::endl;
     }
   }
 }

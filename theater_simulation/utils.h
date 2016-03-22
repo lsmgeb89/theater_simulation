@@ -54,7 +54,7 @@ class SemaphoreGuard {
   }
 
   SemaphoreGuard(Semaphore& semaphore, adopt_lock_t)
-      : semaphore_(semaphore) { }
+    : semaphore_(semaphore) { }
 
   ~SemaphoreGuard() {
     semaphore_.Post();

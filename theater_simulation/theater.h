@@ -2,8 +2,7 @@
 #define THEATER_SIMULATION_THEATER_H_
 
 #include <atomic>
-#include <functional>
-#include <iostream>
+#include <future>
 #include <queue>
 #include <random>
 #include <string>
@@ -14,11 +13,15 @@
 namespace theater {
 
 class Theater;
-typedef void (Theater::*ThreadFunc) (const uint32_t&);
+typedef void (Theater::*ThreadFunc) (const uint32_t&, std::promise<uint32_t>);
 
 struct ThreadInfo {
   ThreadFunc start_routine;
   uint32_t thread_num;
+  std::string name;
+  std::vector<std::thread> threads;
+  std::vector<std::promise<uint32_t>> promises;
+  std::vector<std::future<uint32_t>> futures;
 };
 
 enum TicketResult {
@@ -54,22 +57,20 @@ class Theater {
   void BuyFood(const uint32_t& id);
 
   // thread function
-  void Customer(const uint32_t& id);
-  void BoxOfficeAgent(const uint32_t& id);
-  void TicketTaker(const uint32_t& id);
-  void ConcessionStandWorker(const uint32_t& id);
+  void Customer(const uint32_t& id, std::promise<uint32_t> id_promise);
+  void BoxOfficeAgent(const uint32_t& id, std::promise<uint32_t> id_promise);
+  void TicketTaker(const uint32_t& id, std::promise<uint32_t> id_promise);
+  void ConcessionStandWorker(const uint32_t& id, std::promise<uint32_t> id_promise);
 
   // internal helper
-  void CreateThread(const ThreadInfo& thread_info,
-                    std::vector<std::thread>& threads);
-  void JoinThread(std::vector<std::thread>& threads);
+  void CreateThread(ThreadInfo& thread_info);
+  void JoinThread(ThreadInfo& thread_info);
   static std::string FoodToString(const Food& food);
 
   //
   std::atomic_bool done_;
   utils::Semaphore mutex_output_;
-  std::array<ThreadInfo, 4> pools_info_;
-  std::array<std::vector<std::thread>, 4> threads_;
+  std::vector<ThreadInfo> thread_pool_;
 
   //
   std::vector<uint64_t> movie_seat_;
