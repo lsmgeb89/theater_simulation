@@ -67,28 +67,26 @@ class Theater {
   void JoinThread(ThreadInfo& thread_info);
   static std::string FoodToString(const Food& food);
 
-  //
+  // control threads
   std::atomic_bool done_;
   utils::Semaphore mutex_output_;
   std::vector<ThreadInfo> thread_pool_;
 
-  //
+  // movie info
   std::vector<uint64_t> movie_seat_;
   std::vector<std::string> movie_list_;
   utils::Semaphore mutex_movie_seat_;
 
-  //
-  std::queue<uint32_t> customer_queue_;
-  utils::Semaphore mutex_customer_line_;
-  utils::Semaphore customer_in_line_;
+  // buy ticket queue related
+  std::queue<uint32_t> buy_ticket_queue_;
+  utils::Semaphore mutex_buy_ticket_queue_;
+  utils::Semaphore customer_in_buy_ticket_queue_;
 
   // event for buying ticket
   std::vector<TicketMessage> message_;
-  std::vector<utils::Semaphore> agent_available_;
-  std::vector<utils::Semaphore> request_available_;
-  std::vector<utils::Semaphore> buy_finished_;
+  std::vector<utils::Semaphore> buy_ticket_finished_;
 
-  //
+  // ticket taker queue related
   std::queue<uint32_t> ticket_taker_queue_;
   utils::Semaphore mutex_ticket_taker_queue_;
   utils::Semaphore customer_in_ticket_taker_queue_;
@@ -96,15 +94,13 @@ class Theater {
   // event for taking ticket
   std::vector<utils::Semaphore> ticket_taken_;
 
-  //
+  // concession stand queue related
   std::queue<uint32_t> concession_stand_queue_;
   utils::Semaphore mutex_concession_stand_queue_;
   utils::Semaphore customer_in_concession_stand_queue_;
 
-  // event for buying ticket
+  // event for buying food
   std::vector<Food> food_message_;
-  std::vector<utils::Semaphore> concession_stand_worker_available_;
-  std::vector<utils::Semaphore> food_request_available_;
   std::vector<utils::Semaphore> buy_food_finished_;
 
   std::mt19937 random_engine_;
