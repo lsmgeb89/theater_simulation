@@ -158,7 +158,7 @@ void Theater::BoxOfficeAgent(const uint32_t& id, std::promise<uint32_t> id_promi
                    << movie_list_[message_[customer_id].movie_index]
                    << " to customer " << customer_id << std::endl;
 
-        usleep(1500);
+        usleep(1500000);
       } else {
         message_[customer_id].result = TicketSold;
       }
@@ -189,7 +189,7 @@ void Theater::TicketTaker(const uint32_t& id, std::promise<uint32_t> id_promise)
       ticket_taker_queue_.pop();
     }
 
-    usleep(250);
+    usleep(250000);
 
     MUTEX_COUT << "Ticket taken from customer " << customer_id << std::endl;
 
@@ -221,7 +221,7 @@ void Theater::ConcessionStandWorker(const uint32_t& id, std::promise<uint32_t> i
                << " taken from customer " << customer_id << std::endl;
 
     // Fill Order
-    usleep(3000);
+    usleep(3000000);
 
     // Notify the customer to take the food
     MUTEX_COUT << FoodToString(food_message_[customer_id])
