@@ -1,0 +1,153 @@
+\documentclass[a4paper]{report}
+
+% load packages
+%\usepackage{showframe}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{courier}
+
+\lstset{language=C,
+    basicstyle=\ttfamily,
+    keywordstyle=\bfseries,
+    showstringspaces=false,
+    morekeywords={semWait, semSignal}
+}
+
+\begin{document}
+
+\title{Design of Project 2 for CS 5348.001 - Operating Systems Concepts}
+
+\author{Siming Liu}
+
+\maketitle{}
+
+\section*{Semaphore}
+\begin{lstlisting}
+  // as mutex to protect the movie related variables
+  semaphore mutex_movie_seat_ = 1;
+
+  // as mutex to protect the queue of buying ticket
+  semaphore mutex_buy_ticket_queue_ = 1;
+
+  // Notify box office agent that the customer has in the queue
+  semaphore customer_in_buy_ticket_queue_ = 0;
+
+  // Notify the customer that buying ticket has been finished
+  semaphore buy_ticket_finished_[50] = {0};
+
+  // as mutex to protect the queue of taking ticket
+  semaphore mutex_ticket_taker_queue_ = 1;
+
+  // Notify ticket taker that the customer has in the queue
+  semaphore customer_in_ticket_taker_queue_ = 0;
+
+  // Notify the customer that taking ticket has been finished
+  semaphore ticket_taken_[50] = {0};
+
+  // as mutex to protect the queue of buying food
+  semaphore mutex_concession_stand_queue_ = 1;
+
+  // Notify concession stand worker that the customer has in the queue
+  semaphore customer_in_concession_stand_queue_ = 0;
+
+  // Notify the customer that buying food has been finished
+  semaphore buy_food_finished_[50] = {0};
+\end{lstlisting}
+
+\section*{Pseudocode}
+\begin{lstlisting}
+  bool BuyTicket(int cust_id) {
+    bool result;
+
+    semWait(mutex_buy_ticket_queue_);
+    PushBuyTicketQueue(cust_id);
+    PickMovieToWatch(cust_id);
+    semSignal(customer_in_buy_ticket_queue_);
+    semSignal(mutex_buy_ticket_queue_);
+
+    semWait(buy_ticket_finished_[cust_id]);
+
+    UpdateButTicketResult();
+    return result;
+  }
+
+  void TakeTicket(int cust_id) {
+    semWait(mutex_ticket_taker_queue_);
+    PushTicketTakerQueue(cust_id);
+    semSignal(customer_in_ticket_taker_queue_);
+    semSignal(mutex_ticket_taker_queue_);
+
+    semWait(ticket_taken_[cust_id]);
+  }
+
+  void BuyFood(int cust_id) {
+    semWait(mutex_concession_stand_queue_);
+    PushConcessionStandQueue(cust_id);
+    PickFoodToBuy(cust_id);
+    semSignal(customer_in_concession_stand_queue_);
+
+    semWait(buy_food_finished_[id]);
+  }
+
+  int Customer(int cust_id) {
+    if (!BuyTicket(id)) { return cust_id; }
+
+    TakeTicket(id);
+
+    if (WantToBuyFood()) { BuyFood(id); }
+
+    return cust_id;
+  }
+
+  void BoxOfficeAgent(void) {
+    int cust_id;
+
+    while(true) {
+      semWait(customer_in_buy_ticket_queue_);
+
+      semWait(mutex_buy_ticket_queue_);
+      cust_id = PopBuyTicketQueue();
+      semSignal(mutex_buy_ticket_queue_);
+
+      semWait(mutex_movie_seat_);
+      SellTicket(cust_id);
+      semSignal(mutex_movie_seat_);
+
+      semSignal(buy_ticket_finished_[cust_id]);
+    }
+  }
+
+  void TicketTaker(void) {
+    int cust_id;
+
+    while(true) {
+      semWait(customer_in_ticket_taker_queue_);
+
+      semWait(mutex_ticket_taker_queue_);
+      customer_id = PopTicketTakerQueue();
+      semSignal(mutex_ticket_taker_queue_);
+
+      TearTicket();
+
+      semSignal(ticket_taken_[cust_id]);
+    }
+  }
+
+  void ConcessionStandWorker(void) {
+    int cust_id;
+
+    while(true) {
+      semWait(customer_in_concession_stand_queue_);
+
+      semWait(mutex_concession_stand_queue_);
+      cust_id = PopConcessionStandQueue();
+      semSignal(mutex_concession_stand_queue_);
+
+      FillOrder();
+
+      semSignal(buy_food_finished_[cust_id]);
+    }
+  }
+\end{lstlisting}
+
+\end{document}
