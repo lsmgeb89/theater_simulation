@@ -1,0 +1,43 @@
+\documentclass[a4paper]{report}
+
+% load packages
+%\usepackage{showframe}
+\usepackage[utf8]{inputenc}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{courier}
+
+\lstset{
+  basicstyle=\ttfamily,
+  showstringspaces=false
+}
+
+\begin{document}
+
+\title{Summary of Project 2 for CS 5348.001 - Operating Systems Concepts}
+
+\author{Siming Liu}
+
+\maketitle{}
+
+\section*{Semaphore Usage}
+There are two ways to use semaphores in this project: to protect resources as mutex and to coordinate threads running and blocking.
+\begin{enumerate}[label=\textbf{\textit{\alph*}})]
+  \item To protect resources, we should initialize the semaphore to $1$, meaning that only one thread could access to the resource at one time. And we put the \lstinline{semWait()} and \lstinline{semSignal()} function around the resources as a mutex or a critical section to protect it.
+  \item To coordinate two threads, we should initialize the semaphore to $0$ and put a \lstinline{semWait()} function in thread $a$ and put another pair of \lstinline{semSignal()} function in another thread $b$. When thread $a$ runs into \lstinline{semWait()} if thread $b$ has not run to \lstinline{semSignal()}, the semaphore will decrease to $-1$ and thread $a$ blocks. Once thread $b$ calls \lstinline{semSignal()}, thread $a$ runs again. So this way could be used to simulate thread $a$ which is waiting for the notification of thread $b$.
+\end{enumerate}
+
+\section*{Difficulties I Encountered}
+I start this project with \lstinline{C++} and \lstinline{pthread} library. Because \lstinline{pthread} library is a library written in \lstinline{C}, it is hard to get the whole program conform with Object-Oriented design. I tried to put all thread functions into a class \lstinline{Theater} as member functions, and use \lstinline{pthread_create()} function to start service threads with these member functions. But it failed. And then I have to make all these functions as static and make all member variables like all these smeaphores and queues as static. Thus I have done the project with \lstinline{pthread}. But I misuse the static functions and members in order to coordinate \lstinline{pthread} library. And I was thinking that due to the trait of \lstinline{C} library of \lstinline{pthread}, it is hard to make the whole program follow Object-Oriented design.
+
+So I want to rewrite the whole program by using \lstinline{C++11} Thread support library. By using the \lstinline{std::thread} class, I could start a thread with member functions as thread functions. So I could make all thread functions and semaphores be members of class \lstinline{Theater}. All the thread functions as members share accessing resources as member variables.
+
+But Thread support library doesn't provide semaphore, I have to use condition variables to simply make a \lstinline{Semaphore} class. And then I make a \lstinline{SemaphoreGuard} class to follow RAII (Resource Acquisition Is Initialization) idiom when using \lstinline{Smeaphore} objects like the \lstinline{std::lock_guard} provided by the library.
+
+Although by using \lstinline{std::thread} class, programmers could conveniently manage threads. But I could not fetch return values of the thread functions. I have to use \lstinline{std::promise} and \lstinline{std::future} for each customer thread to get the return value of that thread function. Because in each function, I will return customer id. Thus when I join all threads, I could know whether all customer threads are joined as project requires.
+
+In the previous \lstinline{pthread} version, I could only join customer threads and leave all service threads running before program exits. Because when the process exits, the operating system will handle these unjoined threads and kill them. But in the later version, when I do the same thing, it will cause a segmentation fault. So I have to join all service threads. In all services thread functions, there is a \lstinline{while} loop to check a \lstinline{std::atomic_bool} flag which is a member variable and all threads works are in the \lstinline{while} loop. It is \lstinline{true} before the all threads created. And after joining all customer threads, I set the flag to \lstinline{false}. Some service threads will not enter the loop again. But some threads maybe still miss the chance to return and enter the loop again. So after set the flag to \lstinline{false}, I purposely call \lstinline{semSingal()} to let blocking threads running again to get a chance to check the flag and return. Thus all services threads are successfully joined.
+
+\section*{What I Learned}
+Through this project, I have learnt how to use semaphores to protect resources and coordinate threads and how to use \lstinline{pthread} library and facilities provided by \lstinline{C++11} Thread support library to manage threads.
+\end{document}
