@@ -24,7 +24,7 @@
 
 \section*{Semaphore}
 \begin{lstlisting}
-  // as mutex to protect the movie related variables
+  // as mutex to protect the vector movie_seat_ that holds the number of seats of each movie
   semaphore mutex_movie_seat_ = 1;
 
   // as mutex to protect the queue of buying ticket
@@ -68,7 +68,7 @@
 
     semWait(buy_ticket_finished_[cust_id]);
 
-    UpdateButTicketResult();
+    UpdateBuyTicketResult();
     return result;
   }
 
@@ -86,6 +86,7 @@
     PushConcessionStandQueue(cust_id);
     PickFoodToBuy(cust_id);
     semSignal(customer_in_concession_stand_queue_);
+    semSignal(mutex_concession_stand_queue_);
 
     semWait(buy_food_finished_[id]);
   }

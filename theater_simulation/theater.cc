@@ -157,11 +157,10 @@ void Theater::BoxOfficeAgent(const uint32_t& id, std::promise<uint32_t> id_promi
         MUTEX_COUT << "Box office agent " << id << " sold ticket for "
                    << movie_list_[message_[customer_id].movie_index]
                    << " to customer " << customer_id << std::endl;
-
-        usleep(1500000);
       } else {
         message_[customer_id].result = TicketSold;
       }
+      usleep(1500000);
     }
 
     // Notify the customer to check the response

@@ -4,7 +4,7 @@
    |
    theater.cc theater.h: implementation of class Theater
    |
-   util.h: Semaphore and logging utility
+   utils.h: Semaphore and logging utility
    |
    CMakeLists.txt: a CMake file for building project
 
@@ -24,5 +24,5 @@ How to compile (only support on csgrads1.utdallas.edu by using Linux shell comma
 3. make
 
 How to run:
-theater_simulation 'path_to_movies_file'
-(eg: theater_simulation ../movies.txt)
+'path_to_theater_simulation' 'path_to_movies_file'
+(eg: ./theater_simulation ../movies.txt)
